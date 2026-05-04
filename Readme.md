@@ -292,20 +292,120 @@ VITE_APP_VERSION=1.0.0
 
 ## Key Learnings
 
-- RBAC implementation (Admin vs User role separation)
-- localStorage-based JWT authentication
-- Sequelize transactions for atomic DB operations
-- Dynamic schema design using EAV pattern
-- Frontend + backend validation layers
-- Clean architecture and layering (Routes → Controllers → Services)
-- React Context for global auth state
-- TanStack Query for server-state management
-- Redis for secure token invalidation on logout
+-# Dynamic Form Builder – Key Technical Implementations
 
+## 1. Database Transactions (Sequelize)
+- Used Sequelize transactions to ensure atomic operations
+- Applied during:
+  - Form creation
+  - Field insertion
+  - Validation/options storage
+- Ensures:
+  - Full success OR full rollback (no partial data)
+
+---
+
+## 2. EAV Pattern (Entity-Attribute-Value)
+- Implemented dynamic schema using EAV pattern
+- Structure:
+  - Entity → Form
+  - Attribute → Field
+  - Value → User input
+- Benefits:
+  - No schema changes required
+  - Supports dynamic fields (text, dropdown, checkbox, etc.)
+
+---
+
+## 3. Layered Architecture
+- Followed clean structure:
+  Routes → Controllers → Services → Database
+- Separation of concerns:
+  - Routes → API endpoints
+  - Controllers → request/response handling
+  - Services → business logic
+  - Models → DB interaction
+
+---
+
+## 4. Validation Layers
+- Frontend (React):
+  - Required fields
+  - Type validations
+- Backend (Node.js):
+  - Data validation
+  - Security checks
+- Ensures data integrity and prevents invalid input
+
+---
+
+## 5. RBAC (Role-Based Access Control)
+- Roles implemented:
+  - Admin → Manage forms
+  - User → Fill forms
+- Restricts unauthorized access
+
+---
+
+## 6. JWT Authentication
+- Used JWT for authentication
+- Token stored in localStorage
+- Middleware used to protect routes
+
+---
+
+## 7. Redis for Token Invalidation
+- Stored blacklisted tokens in Redis on logout
+- Prevents reuse of expired/invalid tokens
+- Adds extra security layer
+
+---
+
+## 8. Dynamic Form Rendering (React)
+- UI generated dynamically from backend response
+- Supports:
+  - Field types
+  - Validation rules
+  - Options (dropdown, radio, etc.)
+- No hardcoded forms
+
+---
+
+## 9. React Context (Global State)
+- Managed global authentication state
+- Stored:
+  - User data
+  - Token
+- Avoided prop drilling
+
+---
+
+## 10. TanStack Query
+- Used for server-state management
+- Features:
+  - Data fetching
+  - Caching
+  - Auto refetch
+- Improves performance and UX
+
+---
+
+## 11. Concurrency Handling
+- Prevented duplicate submissions
+- Managed conflicting updates
+
+
+---
+
+## 12. Centralized Error Handling
+- Implemented global error middleware in Express
+- Ensures:
+  - Consistent API responses
+  - Cleaner code structure
 ---
 
 
 
 ## Conclusion
 
-This project demonstrates a production-level architecture with secure JWT authentication, role-separated access control, dynamic form handling via EAV pattern, full validation coverage, and clean full-stack architecture using modern React and Node.js practices.
+I built a dynamic form builder using Node.js, React, and PostgreSQL with an EAV-based schema for flexibility. I used Sequelize transactions to ensure atomic operations during form creation, implemented RBAC and JWT authentication with Redis-based token invalidation, and followed a clean layered architecture. On the frontend, I used React Context and TanStack Query for efficient state and server data management
