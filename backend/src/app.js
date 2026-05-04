@@ -13,7 +13,7 @@ import { seedAdmin } from "./utils/seedAdmin.js";
 
 const app = express();
 
-//  FIX CORS FOR COOKIES
+
 app.use(cors({
   origin: "http://localhost:5173", 
   credentials: true
