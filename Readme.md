@@ -1,0 +1,311 @@
+# Dynamic Form Builder System
+
+## Overview
+
+A full-stack Dynamic Form Builder where admins create forms and users fill and update their responses. The system demonstrates strong backend and frontend architecture with secure authentication, role-based access control, and scalable database design.
+
+---
+
+## Tech Stack
+
+### Backend
+- Node.js
+- Express.js
+- PostgreSQL
+- Sequelize ORM
+- JWT Authentication (localStorage-based)
+- Redis (Token Blacklist)
+
+### Frontend
+- React (Hooks)
+- React Router
+- TanStack Query (React Query)
+- Context API (Auth State)
+- Tailwind CSS
+
+---
+
+## Architecture
+
+### Backend Architecture
+
+```
+Routes → Controllers → Services → Models → Database
+```
+
+- **Routes** handle API endpoints
+- **Controllers** handle request/response
+- **Services** contain business logic
+- **Models** define database schema
+- **Middleware** handles authentication, authorization, validation, and errors
+- **Utils** contains reusable helper functions (e.g. JWT token generation and verification)
+- **Validators** contains request body validation schemas and methods used by middleware
+
+### Frontend Architecture
+
+```
+Pages → Components → Services → Context → UI
+```
+
+- **Pages** represent screens (Login, Signup, Forms, Fill Form)
+- **Components** are reusable UI elements
+- **Services** handle API calls
+- **Context** manages global authentication state
+- **TanStack Query** manages server state and caching
+
+---
+
+## Authentication & Authorization
+
+### Authentication
+
+- JWT-based authentication
+- Token stored in **localStorage** (sent via `Authorization: Bearer <token>` header)
+- On login, token is saved to localStorage and loaded into Context
+- On logout, token is removed from localStorage and blacklisted in Redis
+
+> 
+### Role-Based Access Control (RBAC)
+
+| Role  | Permissions |
+|-------|-------------|
+| ADMIN | Create and manage all forms |
+| USER  | View forms, submit responses, update their own submitted responses |
+
+RBAC is enforced at:
+- Route level (authorization middleware)
+- Service level (data filtering)
+
+---
+
+## Key Features
+
+### Pagination
+- All form list endpoints support pagination via `page` and `limit` query parameters
+- Backend returns paginated results with total count for frontend to render page controls
+
+### Dynamic Form Builder (Admin Only)
+- Only **admins** can create forms
+- Supports multiple field types:
+  - Text
+  - Number
+  - Dropdown
+  - Date
+  - Checkbox
+
+### Form Response (Users Only)
+- Users can **fill out** any published form
+- Submitting again **updates** the existing response — no duplicate responses (upsert via `POST /forms/:id/submit`)
+- Each user has one response per form, replaced in-place on resubmission
+
+### Validations
+- **Frontend:** Form field validation before submission (required fields, type checks, etc.)
+- **Backend (form creation):** Validates title, field labels, types, dropdown options, checkbox options, and numeric validation rules (`min`, `max`, `minLength`, `maxLength`)
+- **Backend (form submission):** Per-field validation including required checks, type checks (NUMBER, DATE), text length constraints, numeric range constraints, dropdown option validation, and conditional field evaluation (fields are only validated if their condition is met)
+
+### Dynamic Response Handling (EAV Pattern)
+- Uses `Response` and `ResponseValue` tables
+- Allows flexible schema without DB migrations
+- Supports any combination of dynamic fields
+
+### Conditional Fields
+
+- Conditional fields are only shown/validated when their condition evaluates to true
+- Submission skips validation for fields whose condition is not met
+
+### Transactions
+- Sequelize transactions used during **form creation** and **form update**
+- Form creation: form + all fields created atomically
+- Form update: existing fields destroyed and recreated atomically within a transaction
+
+### Redis Integration
+- Token blacklist on logout
+- Prevents reuse of revoked tokens
+
+### Admin Seeder
+- Runs automatically on server startup (via `utils/bcrypt.util.js`)
+- Checks if an admin user already exists before creating one (idempotent)
+- Seeds admin credentials from environment variables (`ADMIN_EMAIL`, `ADMIN_PASSWORD`)
+- Password is hashed with bcrypt before storing
+
+### Error Handling
+
+**Backend — Global Error Middleware:**
+- Catches all errors passed via `next(err)` across routes and controllers
+- Responds with a consistent JSON shape: `{ success: false, message }`
+- Uses `err.status` if set (e.g. from `createError`), falls back to `500`
+
+**Frontend — React Error Boundary:**
+- Class component wrapping the app tree
+- Catches unhandled render/component errors via `getDerivedStateFromError`
+- Renders a fallback UI (`Something went wrong.`) instead of crashing the whole app
+
+### Logging
+- Structured logging in services
+- Helps with debugging and tracing execution flow
+
+---
+
+## Frontend Flow
+
+### Login Flow
+```
+User → Login API → JWT received → Saved to localStorage → Context updated → Redirect to dashboard
+```
+
+### Protected Routing
+- Implemented using `ProtectedRoute`
+- Reads token directly from localStorage via Context on app load
+- Redirects unauthenticated users to login
+
+### Data Fetching
+- TanStack Query handles all API calls, caching, refetching, and error states
+
+### State Management
+- Context API manages auth state (user, role, token)
+
+### Styling
+- Tailwind CSS for fast, consistent UI
+
+---
+
+## Backend Flow
+
+### Request Lifecycle
+```
+Request → Route → Auth Middleware (Utils: JWT) → Authorization Middleware → Validation Middleware (Validators) → Controller → Service → Database
+```
+
+### Authentication Flow
+```
+Login        → Verify credentials → Generate JWT → Return token to client
+Request      → Read Authorization header → Verify token → Attach user to request
+Logout       → Add token to Redis blacklist → Remove from client
+```
+
+### RBAC Flow
+```
+Request → Middleware attaches user + role → Service enforces role rules → Response returned
+```
+
+---
+
+## Database Design
+
+### Tables
+
+| Table | Description |
+|-------|-------------|
+| Users | Stores user accounts and roles |
+| Forms | Forms created by admins |
+| Fields | Fields belonging to each form |
+| Responses | One response per user per form |
+| ResponseValues | Individual field values within a response |
+
+### Relationships
+
+- `User` → `Forms` (one-to-many)
+- `Form` → `Fields` (one-to-many)
+- `Form` → `Responses` (one-to-many)
+- `Response` → `ResponseValues` (one-to-many)
+
+---
+
+## Security
+
+- Password hashing with **bcrypt**
+- JWT stored in **localStorage** with Bearer token headers
+- RBAC enforced at backend (route + service layers)
+- Input validation on both **frontend and backend**
+- Redis used for **token invalidation** on logout
+
+---
+
+## Setup
+
+### Backend
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+> The admin user is automatically seeded on first server start if no admin exists. Credentials are read from `ADMIN_EMAIL` and `ADMIN_PASSWORD` in  `.env`.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Environment Variables
+
+**Backend `.env`:**
+```env
+PORT=5000
+DB_NAME=forms_db
+DB_USER=postgres
+DB_PASS=postgres
+JWT_SECRET=supersecret
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+
+# Admin Seed Credentials
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=Admin@123
+```
+
+**Frontend `.env`:**
+```env
+VITE_API_URL=http://localhost:5000
+VITE_APP_NAME=Dynamic Form Builder
+VITE_APP_VERSION=1.0.0
+```
+
+---
+
+## API Overview
+
+### Auth Routes (`/auth`)
+
+| Method | Endpoint | Middleware | Description |
+|--------|----------|------------|-------------|
+| POST | `/auth/register` | None | Register a new user |
+| POST | `/auth/login` | None | Login and receive JWT |
+| POST | `/auth/logout` | `authenticate` | Logout and blacklist token in Redis |
+
+### Form Routes (`/forms`)
+
+| Method | Endpoint | Middleware | Description |
+|--------|----------|------------|-------------|
+| POST | `/forms` | `authenticate`, `isAdmin`, `validate(createFormSchema)` | Create a new form (Admin only) |
+| GET | `/forms?page=&limit=` | `authenticate` | List all forms with pagination |
+| GET | `/forms/:id` | None | Get a single form with its fields |
+| PUT | `/forms/:id` | `authenticate`, `isAdmin`, `validate(createFormSchema)` | Update a form (Admin only) |
+| POST | `/forms/:id/submit` | `authenticate` | Submit or update response (upsert — creates on first submit, replaces values on resubmit) |
+| GET | `/forms/:id/responses` | `authenticate` | Get the authenticated user's response for a form (returns `{}` if none) |
+
+---
+
+## Key Learnings
+
+- RBAC implementation (Admin vs User role separation)
+- localStorage-based JWT authentication
+- Sequelize transactions for atomic DB operations
+- Dynamic schema design using EAV pattern
+- Frontend + backend validation layers
+- Clean architecture and layering (Routes → Controllers → Services)
+- React Context for global auth state
+- TanStack Query for server-state management
+- Redis for secure token invalidation on logout
+
+---
+
+
+
+## Conclusion
+
+This project demonstrates a production-level architecture with secure JWT authentication, role-separated access control, dynamic form handling via EAV pattern, full validation coverage, and clean full-stack architecture using modern React and Node.js practices.
