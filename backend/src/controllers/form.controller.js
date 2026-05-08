@@ -7,7 +7,9 @@ export const createFormController = async (req, res) => {
 
 export const getFormsController = async (req, res, next) => {
   try {
-    const data = await service.getForms(req.user); 
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const data = await service.getForms(req.user, page, limit); 
     res.json(data);
   } catch (err) {
     next(err);

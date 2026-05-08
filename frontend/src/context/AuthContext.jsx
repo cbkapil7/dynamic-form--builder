@@ -1,53 +1,31 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { api } from "../services/api";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  // restore user safely and verify with server
+  // restore user safely
   useEffect(() => {
-    const verifyAuth = async () => {
+    const storedUser = localStorage.getItem("user");
+
+    if (storedUser && storedUser !== "undefined") {
       try {
-        const storedUser = localStorage.getItem("user");
+        const parsed = JSON.parse(storedUser);
 
-        if (storedUser && storedUser !== "undefined") {
-          const parsed = JSON.parse(storedUser);
-
-          if (parsed && parsed.id) {
-            // Verify token is still valid by calling /auth/me
-            try {
-              const res = await api.get("/auth/me");
-              if (res.data?.user) {
-                setUser(res.data.user);
-                setIsAuthenticated(true);
-              } else {
-                localStorage.removeItem("user");
-                setUser(null);
-                setIsAuthenticated(false);
-              }
-            } catch (err) {
-              // Token invalid or expired
-              localStorage.removeItem("user");
-              setUser(null);
-              setIsAuthenticated(false);
-            }
-          }
+        if (parsed && parsed.id) {
+          setUser(parsed);
+          setIsAuthenticated(true);
         }
       } catch (err) {
-        console.error("Auth check failed:", err);
+        console.error("Invalid user in localStorage");
+
         localStorage.removeItem("user");
         setUser(null);
         setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    verifyAuth();
+    }
   }, []);
 
   const login = (userData) => {
@@ -72,12 +50,14 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
+
     localStorage.removeItem("user");
+
     window.location.href = "/login";
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
