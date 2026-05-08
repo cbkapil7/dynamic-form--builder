@@ -12,12 +12,15 @@ api.interceptors.response.use(
     const message =
       error?.response?.data?.message || "Something went wrong";
 
-    toast.error(message);
-
     if (error.response?.status === 401) {
+      // Clear localStorage auth state before redirecting
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
       window.location.replace("/login");
+      return Promise.reject(error);
     }
 
+    toast.error(message);
     return Promise.reject(error);
   }
 );

@@ -8,12 +8,21 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   const { mutate, isPending } = useLogin();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
-  // redirect if already logged in
-  if (isAuthenticated) {
+  // Wait for auth state to initialize, then redirect if already logged in
+  if (!loading && isAuthenticated) {
     return <Navigate to="/" replace />;
+  }
+
+  // Optional: Show loading spinner while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-gray-100 to-gray-200">
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   const handleLogin = () => {
